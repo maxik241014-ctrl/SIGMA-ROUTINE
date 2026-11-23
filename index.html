@@ -1,0 +1,68 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090909">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>SIGMA ROUTINE</title>
+<style>
+:root{color-scheme:dark;--gold:#d8ad45;--bg:#090909;--panel:#171717;--muted:#aaa}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#282013 0,#090909 42%);color:#f5f1e8;font:16px system-ui,sans-serif;min-height:100vh}
+main{max-width:720px;margin:auto;padding:24px 16px 48px}
+header{text-align:center;padding:22px 8px 18px}
+.logo{font-size:64px;line-height:1.1}h1{letter-spacing:3px;color:var(--gold);margin:10px 0 4px;font-size:clamp(27px,7vw,38px)}
+.sub{color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}
+.stat,.section{background:var(--panel);border:1px solid #3c321e;border-radius:16px;padding:15px}
+.stat strong{display:block;color:var(--gold);font-size:23px}.stat span{font-size:12px;color:var(--muted)}
+.progress-wrap{height:9px;background:#333;border-radius:20px;overflow:hidden;margin-top:9px}.progress{height:100%;width:0;background:linear-gradient(90deg,#a77b21,#f1d27b);transition:width .2s}
+h2{font-size:18px;color:var(--gold);margin:0 0 12px}
+.task{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #303030}
+.task:last-child{border:0}.task input{accent-color:var(--gold);width:20px;height:20px;margin-top:2px}
+.task.done .task-name{text-decoration:line-through;color:#888}
+.time{color:var(--gold);font-weight:700;min-width:58px}.task-name{font-weight:600}.detail{font-size:13px;color:var(--muted);margin-top:2px}
+.section{margin-top:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{background:var(--gold);color:#17120a;border:0;border-radius:12px;padding:11px 15px;font-weight:700;font-size:14px}
+button.secondary{background:#292929;color:#eee;border:1px solid #555}
+.note{font-size:12px;color:var(--muted);text-align:center;margin-top:22px}
+</style>
+</head>
+<body><main>
+<header><div class="logo">🗿👑</div><h1>SIGMA ROUTINE</h1><p class="sub">Build your day. One task at a time.</p></header>
+<div class="stats">
+ <div class="stat"><strong id="xp">0</strong><span>XP DNES</span></div>
+ <div class="stat"><strong id="level">1</strong><span>LEVEL</span></div>
+ <div class="stat"><strong id="done">0/11</strong><span>HOTOVO</span></div>
+</div>
+<div class="section"><h2>Denní progres</h2><div class="progress-wrap"><div class="progress" id="bar"></div></div></div>
+<div class="section"><h2>Denní rutina</h2><div id="tasks"></div></div>
+<div class="section"><h2>Dnešní výzva</h2><div id="challenge">Dokonči alespoň 8 úkolů a získej bonus 20 XP.</div></div>
+<div class="actions"><button id="reset" class="secondary">Nový den / reset</button><button id="install" hidden>Instalovat aplikaci</button></div>
+<p class="note">Tvůj postup se ukládá v tomto zařízení. Verze 1.0 funguje i offline po prvním načtení.</p>
+</main>
+<script>
+const tasks=[
+["06:00","Vstát a ustlat postel"],["06:10","Ranní hygiena"],["06:25","Voda a snídaně"],["06:45","Připravit se do školy"],["07:00","Odchod podle rozvrhu"],["15:00","Odpočinek a domácí úkoly"],["16:30","Sport nebo procházka"],["17:30","Koníčky a volný čas"],["19:00","Večeře a příprava na zítřek"],["20:30","Večerní hygiena a relax"],["21:00","Čas jít spát"]
+];
+const today=()=>new Date().toLocaleDateString("sv-SE");
+let state=JSON.parse(localStorage.getItem("sigmaState")||"null");
+if(!state||state.date!==today())state={date:today(),checks:Array(tasks.length).fill(false)};
+const save=()=>localStorage.setItem("sigmaState",JSON.stringify(state));
+function render(){
+ const count=state.checks.filter(Boolean).length,xp=count*10+(count>=8?20:0);
+ document.getElementById("xp").textContent=xp;
+ document.getElementById("level").textContent=1+Math.floor(xp/100);
+ document.getElementById("done").textContent=count+"/"+tasks.length;
+ document.getElementById("bar").style.width=(count/tasks.length*100)+"%";
+ document.getElementById("challenge").textContent=count>=8?"Výzva splněna! +20 XP započítáno.":"Dokonči alespoň 8 úkolů a získej bonus 20 XP.";
+ document.getElementById("tasks").innerHTML=tasks.map((t,i)=>`<label class="task ${state.checks[i]?"done":""}"><input type="checkbox" data-i="${i}" ${state.checks[i]?"checked":""}><span class="time">${t[0]}</span><span class="task-name">${t[1]}</span></label>`).join("");
+ document.querySelectorAll("[data-i]").forEach(el=>el.addEventListener("change",e=>{state.checks[+e.target.dataset.i]=e.target.checked;save();render()}));
+}
+document.getElementById("reset").addEventListener("click",()=>{if(confirm("Opravdu chceš resetovat dnešní úkoly?")){state={date:today(),checks:Array(tasks.length).fill(false)};save();render()}});
+render();
+if("serviceWorker" in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+let deferredPrompt;window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;const b=document.getElementById("install");b.hidden=false;b.onclick=async()=>{deferredPrompt.prompt();deferredPrompt=null;b.hidden=true}});
+</script>
+</body></html>
