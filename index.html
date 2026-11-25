@@ -27,6 +27,7 @@ h2{font-size:18px;color:var(--gold);margin:0 0 12px}
 button{background:var(--gold);color:#17120a;border:0;border-radius:12px;padding:11px 15px;font-weight:700;font-size:14px}
 button.secondary{background:#292929;color:#eee;border:1px solid #555}
 .note{font-size:12px;color:var(--muted);text-align:center;margin-top:22px}
+@media(max-width:390px){.stats{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body><main>
@@ -37,19 +38,63 @@ button.secondary{background:#292929;color:#eee;border:1px solid #555}
  <div class="stat"><strong id="done">0/11</strong><span>HOTOVO</span></div>
 </div>
 <div class="section"><h2>Denní progres</h2><div class="progress-wrap"><div class="progress" id="bar"></div></div></div>
+<div class="section"><h2>Moje statistiky</h2>
+ <div class="stats">
+  <div class="stat"><strong id="totalDone">0</strong><span>ÚKOLŮ CELKEM</span></div>
+  <div class="stat"><strong id="streak">0 dní</strong><span>SÉRIE (8+ ÚKOLŮ/DEN)</span></div>
+  <div class="stat"><strong id="totalXp">0</strong><span>CELKEM XP</span></div>
+  <div class="stat"><strong id="bestLevel">1</strong><span>LEVEL PODLE XP</span></div>
+  <div class="stat"><strong id="weekRate">0%</strong><span>ÚSPĚŠNOST ZA 7 DNÍ</span></div>
+ </div>
+</div>
 <div class="section"><h2>Denní rutina</h2><div id="tasks"></div></div>
 <div class="section"><h2>Dnešní výzva</h2><div id="challenge">Dokonči alespoň 8 úkolů a získej bonus 20 XP.</div></div>
 <div class="actions"><button id="reset" class="secondary">Nový den / reset</button><button id="install" hidden>Instalovat aplikaci</button></div>
-<p class="note">Tvůj postup se ukládá v tomto zařízení. Verze 1.0 funguje i offline po prvním načtení.</p>
+<p class="note">Tvůj postup a statistiky se ukládají v tomto zařízení. Verze 1.1 funguje i offline po prvním načtení.</p>
 </main>
 <script>
 const tasks=[
 ["06:00","Vstát a ustlat postel"],["06:10","Ranní hygiena"],["06:25","Voda a snídaně"],["06:45","Připravit se do školy"],["07:00","Odchod podle rozvrhu"],["15:00","Odpočinek a domácí úkoly"],["16:30","Sport nebo procházka"],["17:30","Koníčky a volný čas"],["19:00","Večeře a příprava na zítřek"],["20:30","Večerní hygiena a relax"],["21:00","Čas jít spát"]
 ];
 const today=()=>new Date().toLocaleDateString("sv-SE");
+let history=JSON.parse(localStorage.getItem("sigmaHistory")||"{}");
 let state=JSON.parse(localStorage.getItem("sigmaState")||"null");
+if(state && state.date!==today() && Array.isArray(state.checks)){
+ const n=state.checks.filter(Boolean).length;
+ history[state.date]={done:n,xp:n*10+(n>=8?20:0)};
+ localStorage.setItem("sigmaHistory",JSON.stringify(history));
+}
 if(!state||state.date!==today())state={date:today(),checks:Array(tasks.length).fill(false)};
-const save=()=>localStorage.setItem("sigmaState",JSON.stringify(state));
+const save=()=>{
+ localStorage.setItem("sigmaState",JSON.stringify(state));
+ const n=state.checks.filter(Boolean).length;
+ history[state.date]={done:n,xp:n*10+(n>=8?20:0)};
+ localStorage.setItem("sigmaHistory",JSON.stringify(history));
+};
+function updateStats(){
+ const current=state.checks.filter(Boolean).length;
+ const currentXp=current*10+(current>=8?20:0);
+ const days=Object.values(history);
+ const totalDone=days.reduce((a,d)=>a+(d.done||0),0)+current;
+ const totalXp=days.reduce((a,d)=>a+(d.xp||0),0)+currentXp;
+ const allDates={...history,[state.date]:{done:current,xp:currentXp}};
+ let streak=0, cursor=new Date(today()+"T12:00:00");
+ while(true){
+  const key=cursor.toLocaleDateString("sv-SE");
+  if(!allDates[key] || (allDates[key].done||0)<8)break;
+  streak++;cursor.setDate(cursor.getDate()-1);
+ }
+ const last7=Array.from({length:7},(_,i)=>{
+  const d=new Date(today()+"T12:00:00");d.setDate(d.getDate()-i);
+  return allDates[d.toLocaleDateString("sv-SE")]?.done||0;
+ });
+ const rate=Math.round(last7.reduce((a,n)=>a+n,0)/(7*tasks.length)*100);
+ document.getElementById("totalDone").textContent=totalDone;
+ document.getElementById("streak").textContent=streak+" dní";
+ document.getElementById("totalXp").textContent=totalXp;
+ document.getElementById("bestLevel").textContent=1+Math.floor(totalXp/100);
+ document.getElementById("weekRate").textContent=rate+"%";
+}
 function render(){
  const count=state.checks.filter(Boolean).length,xp=count*10+(count>=8?20:0);
  document.getElementById("xp").textContent=xp;
@@ -59,6 +104,7 @@ function render(){
  document.getElementById("challenge").textContent=count>=8?"Výzva splněna! +20 XP započítáno.":"Dokonči alespoň 8 úkolů a získej bonus 20 XP.";
  document.getElementById("tasks").innerHTML=tasks.map((t,i)=>`<label class="task ${state.checks[i]?"done":""}"><input type="checkbox" data-i="${i}" ${state.checks[i]?"checked":""}><span class="time">${t[0]}</span><span class="task-name">${t[1]}</span></label>`).join("");
  document.querySelectorAll("[data-i]").forEach(el=>el.addEventListener("change",e=>{state.checks[+e.target.dataset.i]=e.target.checked;save();render()}));
+ updateStats();
 }
 document.getElementById("reset").addEventListener("click",()=>{if(confirm("Opravdu chceš resetovat dnešní úkoly?")){state={date:today(),checks:Array(tasks.length).fill(false)};save();render()}});
 render();
