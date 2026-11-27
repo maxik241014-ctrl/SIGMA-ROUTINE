@@ -1,0 +1,170 @@
+<!doctype html>
+<html lang="cs">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<meta name="theme-color" content="#090909">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="icon" href="icon.svg" type="image/svg+xml">
+<title>SIGMA ROUTINE</title>
+<style>
+:root{color-scheme:dark;--gold:#d8ad45;--bg:#090909;--panel:#171717;--muted:#aaa}
+*{box-sizing:border-box}body{margin:0;background:radial-gradient(circle at top,#282013 0,#090909 42%);color:#f5f1e8;font:16px system-ui,sans-serif;min-height:100vh}
+main{max-width:720px;margin:auto;padding:24px 16px 48px}header{text-align:center;padding:22px 8px 18px}
+.logo{font-size:64px;line-height:1.1}h1{letter-spacing:3px;color:var(--gold);margin:10px 0 4px;font-size:clamp(27px,7vw,38px)}.sub{color:var(--muted);margin:0}
+.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:10px;margin:18px 0}.stat,.section{background:var(--panel);border:1px solid #3c321e;border-radius:16px;padding:15px}
+.stat strong{display:block;color:var(--gold);font-size:23px}.stat span{font-size:12px;color:var(--muted)}
+.progress-wrap{height:9px;background:#333;border-radius:20px;overflow:hidden;margin-top:9px}.progress{height:100%;width:0;background:linear-gradient(90deg,#a77b21,#f1d27b);transition:width .2s}
+h2{font-size:18px;color:var(--gold);margin:0 0 12px}.task{display:flex;gap:12px;align-items:flex-start;padding:12px 0;border-bottom:1px solid #303030}
+.task:last-child{border:0}.task input{accent-color:var(--gold);width:20px;height:20px;margin-top:2px}.task.done .task-name{text-decoration:line-through;color:#888}
+.time{color:var(--gold);font-weight:700;min-width:58px}.task-name{font-weight:600}.detail{font-size:13px;color:var(--muted);margin-top:2px}
+.section{margin-top:14px}.actions{display:flex;gap:10px;flex-wrap:wrap;margin-top:14px}
+button{background:var(--gold);color:#17120a;border:0;border-radius:12px;padding:11px 15px;font-weight:700;font-size:14px;cursor:pointer}
+button.secondary{background:#292929;color:#eee;border:1px solid #555}
+input[type=email],input[type=password],input[type=text]{width:100%;padding:12px;margin:6px 0 12px;border-radius:10px;border:1px solid #51452c;background:#0d0d0d;color:#fff;font:inherit}
+.auth-grid{display:grid;grid-template-columns:1fr 1fr;gap:10px}.muted{color:var(--muted);font-size:13px}.status{font-size:13px;margin-top:8px;min-height:18px;color:var(--gold)}
+.rank-row{display:flex;justify-content:space-between;gap:10px;padding:10px 0;border-bottom:1px solid #303030}.rank-row:last-child{border:0}.rank-name{font-weight:700}.rank-meta{font-size:13px;color:var(--muted)}
+.note{font-size:12px;color:var(--muted);text-align:center;margin-top:22px}
+@media(max-width:480px){.stats{grid-template-columns:repeat(2,1fr)}.auth-grid{grid-template-columns:1fr}}
+</style>
+</head>
+<body><main>
+<header><div class="logo">🗿👑</div><h1>SIGMA ROUTINE</h1><p class="sub">Build your day. One task at a time.</p></header>
+
+<div class="section" id="account">
+ <h2>Účet a přihlášení</h2>
+ <p class="muted">Vytvoř si účet e-mailem a heslem. E-mail se na žebříčku nezobrazuje, ostatní uvidí pouze přezdívku.</p>
+ <div id="authFields">
+ <label for="nickname">Přezdívka</label><input id="nickname" type="text" maxlength="20" autocomplete="nickname" placeholder="Tvoje přezdívka">
+ <label for="email">E-mail (zůstává soukromý)</label><input id="email" type="email" autocomplete="email" placeholder="tvuj@email.cz">
+ <label for="password">Heslo</label><input id="password" type="password" autocomplete="current-password" minlength="6" placeholder="Alespoň 6 znaků">
+ <div class="auth-grid"><button id="signup">Vytvořit účet</button><button id="login" class="secondary">Přihlásit se</button></div>
+ </div>
+ <div class="actions"><button id="logout" class="secondary" hidden>Odhlásit se</button></div>
+ <div class="status" id="authStatus" role="status"></div>
+</div>
+
+<div id="appContent" hidden>
+<div class="stats">
+ <div class="stat"><strong id="xp">0</strong><span>XP DNES</span></div><div class="stat"><strong id="level">1</strong><span>LEVEL</span></div><div class="stat"><strong id="done">0/11</strong><span>HOTOVO</span></div>
+</div>
+<div class="section"><h2>Denní progres</h2><div class="progress-wrap"><div class="progress" id="bar"></div></div></div>
+<div class="section"><h2>Moje statistiky</h2><div class="stats">
+ <div class="stat"><strong id="totalDone">0</strong><span>ÚKOLŮ CELKEM</span></div><div class="stat"><strong id="streak">0 dní</strong><span>SÉRIE (8+ ÚKOLŮ/DEN)</span></div>
+ <div class="stat"><strong id="totalXp">0</strong><span>CELKEM XP</span></div><div class="stat"><strong id="bestLevel">1</strong><span>LEVEL PODLE XP</span></div><div class="stat"><strong id="weekRate">0%</strong><span>ÚSPĚŠNOST ZA 7 DNÍ</span></div>
+</div></div>
+<div class="section"><h2>Denní rutina</h2><div id="tasks"></div></div>
+<div class="section"><h2>Dnešní výzva</h2><div id="challenge">Dokonči alespoň 8 úkolů a získej bonus 20 XP.</div></div>
+<div class="section"><h2>Online žebříček</h2><p class="muted">Nejvyšší XP mají nejvyšší pozici. Zobrazuje se pouze přezdívka, level a XP.</p><div id="leaderboard" class="muted">Přihlas se a načti žebříček.</div><button id="refreshBoard" class="secondary">Obnovit žebříček</button></div>
+<div class="actions"><button id="reset" class="secondary">Nový den / reset</button><button id="install" hidden>Instalovat aplikaci</button></div>
+<p class="note">Postup se ukládá v tomto zařízení a po přihlášení se synchronizuje s účtem. Verze 2.0.</p>
+</main>
+
+</div>
+
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<script>
+const SUPABASE_URL="https://yytltftgiceaamsvskrs.supabase.co";
+const SUPABASE_KEY="sb_publishable_orRYOv1yxO7Ut6Us_e1nTQ_bo-VxzUV";
+const db=window.supabase.createClient(SUPABASE_URL,SUPABASE_KEY);
+const tasks=[
+["06:00","Vstát a ustlat postel"],["06:10","Ranní hygiena"],["06:25","Voda a snídaně"],["06:45","Připravit se do školy"],["07:00","Odchod podle rozvrhu"],["15:00","Odpočinek a domácí úkoly"],["16:30","Sport nebo procházka"],["17:30","Koníčky a volný čas"],["19:00","Večeře a příprava na zítřek"],["20:30","Večerní hygiena a relax"],["21:00","Čas jít spát"]
+];
+const today=()=>new Date().toLocaleDateString("sv-SE");
+let history=JSON.parse(localStorage.getItem("sigmaHistory")||"{}");
+let state=JSON.parse(localStorage.getItem("sigmaState")||"null");
+if(state&&state.date!==today()&&Array.isArray(state.checks)){const n=state.checks.filter(Boolean).length;history[state.date]={done:n,xp:n*10+(n>=8?20:0)};localStorage.setItem("sigmaHistory",JSON.stringify(history))}
+if(!state||state.date!==today())state={date:today(),checks:Array(tasks.length).fill(false)};
+let currentUser=null, syncTimer=null;
+const el=id=>document.getElementById(id);
+function totals(){
+ const all={...history,[state.date]:{done:state.checks.filter(Boolean).length,xp:calcXp(state.checks)}};
+ const days=Object.values(all),done=days.reduce((a,d)=>a+(d.done||0),0),xp=days.reduce((a,d)=>a+(d.xp||0),0);
+ return {done,xp,level:1+Math.floor(xp/100)};
+}
+function calcXp(checks){const n=checks.filter(Boolean).length;return n*10+(n>=8?20:0)}
+function save(){localStorage.setItem("sigmaState",JSON.stringify(state));history[state.date]={done:state.checks.filter(Boolean).length,xp:calcXp(state.checks)};localStorage.setItem("sigmaHistory",JSON.stringify(history))}
+function updateStats(){
+ const current=state.checks.filter(Boolean).length,all={...history,[state.date]:{done:current,xp:calcXp(state.checks)}},t=totals();
+ let streak=0,cursor=new Date(today()+"T12:00:00");while(true){const key=cursor.toLocaleDateString("sv-SE");if(!all[key]||(all[key].done||0)<8)break;streak++;cursor.setDate(cursor.getDate()-1)}
+ const last7=Array.from({length:7},(_,i)=>{const d=new Date(today()+"T12:00:00");d.setDate(d.getDate()-i);return all[d.toLocaleDateString("sv-SE")]?.done||0});
+ el("totalDone").textContent=t.done;el("streak").textContent=streak+" dní";el("totalXp").textContent=t.xp;el("bestLevel").textContent=t.level;el("weekRate").textContent=Math.round(last7.reduce((a,n)=>a+n,0)/(7*tasks.length)*100)+"%";
+}
+function render(){
+ const count=state.checks.filter(Boolean).length,xp=calcXp(state.checks);el("xp").textContent=xp;el("level").textContent=1+Math.floor(xp/100);el("done").textContent=count+"/"+tasks.length;el("bar").style.width=(count/tasks.length*100)+"%";
+ el("challenge").textContent=count>=8?"Výzva splněna! +20 XP započítáno.":"Dokonči alespoň 8 úkolů a získej bonus 20 XP.";
+ el("tasks").innerHTML=tasks.map((t,i)=>`<label class="task ${state.checks[i]?"done":""}"><input type="checkbox" data-i="${i}" ${state.checks[i]?"checked":""}><span class="time">${t[0]}</span><span class="task-name">${t[1]}</span></label>`).join("");
+ document.querySelectorAll("[data-i]").forEach(input=>input.addEventListener("change",e=>{state.checks[+e.target.dataset.i]=e.target.checked;save();render();scheduleSync()}));updateStats();
+}
+function scheduleSync(){if(!currentUser)return;clearTimeout(syncTimer);syncTimer=setTimeout(syncToday,500)}
+async function ensureProfile(){
+ if(!currentUser)return;
+ const nickname=(currentUser.user_metadata?.nickname||el("nickname").value.trim()||"Sigma").slice(0,20);
+ const t=totals();
+ const {error}=await db.from("profiles").upsert({id:currentUser.id,nickname,xp:t.xp,level:t.level,total_tasks:t.done,updated_at:new Date().toISOString()},{onConflict:"id"});
+ if(error)throw error;
+}
+async function syncToday(){
+ if(!currentUser)return;
+ const {error}=await db.from("routine_days").upsert({user_id:currentUser.id,day:state.date,checks:state.checks,completed_tasks:state.checks.filter(Boolean).length,xp_earned:calcXp(state.checks),updated_at:new Date().toISOString()},{onConflict:"user_id,day"});
+ if(error){el("authStatus").textContent="Synchronizace se nezdařila: "+error.message;return}
+ try{await ensureProfile();await refreshLeaderboard()}catch(e){el("authStatus").textContent="Chyba profilu: "+e.message}
+}
+async function refreshLeaderboard(){
+ const box=el("leaderboard");
+ if(!currentUser){box.textContent="Pro online žebříček se přihlas.";return}
+ box.textContent="Načítám…";
+ const {data,error}=await db.from("profiles").select("nickname,xp,level").order("xp",{ascending:false}).limit(20);
+ if(error){box.textContent="Žebříček se nepodařilo načíst: "+error.message;return}
+ box.innerHTML=data.length?data.map((p,i)=>`<div class="rank-row"><div><span class="rank-name">#${i+1} ${escapeHtml(p.nickname||"Sigma")}</span><div class="rank-meta">Level ${p.level||1}</div></div><strong>${p.xp||0} XP</strong></div>`).join(""):"Zatím tu nikdo není.";
+}
+function escapeHtml(s){return String(s).replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+async function setSession(session){
+ currentUser=session?.user||null;
+ el("logout").hidden=!currentUser;
+ el("authFields").hidden=!!currentUser;
+ el("appContent").hidden=!currentUser;
+ if(currentUser){
+  el("authStatus").textContent="Přihlášeno. Načítám tvoji osobní rutinu…";
+  el("nickname").value=currentUser.user_metadata?.nickname||"";
+  // Načti dnešní postup konkrétního účtu dřív, než se cokoli odešle do cloudu.
+  const {data,error}=await db.from("routine_days").select("checks").eq("user_id",currentUser.id).eq("day",state.date).maybeSingle();
+  if(error){el("authStatus").textContent="Nepodařilo se načíst rutinu: "+error.message;return}
+  if(data && Array.isArray(data.checks) && data.checks.length===tasks.length){
+   state={date:today(),checks:data.checks.map(Boolean)};
+   save();
+  }
+  render();
+  await syncToday();
+  el("authStatus").textContent="Přihlášeno. Tvoje osobní rutina je připravená.";
+ }else{
+  el("appContent").hidden=true;
+  el("authStatus").textContent="Nejdřív se přihlas nebo si vytvoř účet.";
+  el("leaderboard").textContent="Pro online žebříček se přihlas.";
+ }
+}
+el("signup").addEventListener("click",async()=>{
+ const email=el("email").value.trim(),password=el("password").value,nickname=el("nickname").value.trim();
+ if(!nickname||!email||password.length<6){el("authStatus").textContent="Vyplň přezdívku, e-mail a heslo (alespoň 6 znaků).";return}
+ el("authStatus").textContent="Vytvářím účet…";
+ const {data,error}=await db.auth.signUp({email,password,options:{data:{nickname}}});
+ if(error){el("authStatus").textContent="Registrace se nezdařila: "+error.message;return}
+ if(data.session)await setSession(data.session);else el("authStatus").textContent="Účet vytvořen. Potvrď registraci přes e-mail a potom se přihlas.";
+});
+el("login").addEventListener("click",async()=>{
+ const email=el("email").value.trim(),password=el("password").value;if(!email||!password){el("authStatus").textContent="Vyplň e-mail a heslo.";return}
+ el("authStatus").textContent="Přihlašuji…";const {data,error}=await db.auth.signInWithPassword({email,password});
+ if(error){el("authStatus").textContent="Přihlášení se nezdařilo: "+error.message;return}await setSession(data.session);
+});
+el("logout").addEventListener("click",async()=>{const {error}=await db.auth.signOut();if(error){el("authStatus").textContent=error.message;return}await setSession(null)});
+el("refreshBoard").addEventListener("click",refreshLeaderboard);
+el("reset").addEventListener("click",()=>{if(confirm("Opravdu chceš resetovat dnešní úkoly?")){state={date:today(),checks:Array(tasks.length).fill(false)};save();render();scheduleSync()}});
+render();
+el("appContent").hidden=true;
+el("authStatus").textContent="Nejdřív se přihlas nebo si vytvoř účet.";
+db.auth.getSession().then(({data})=>setSession(data.session)).catch(e=>el("authStatus").textContent=e.message);
+db.auth.onAuthStateChange((_event,session)=>{setTimeout(()=>setSession(session),0)});
+if("serviceWorker"in navigator)window.addEventListener("load",()=>navigator.serviceWorker.register("./sw.js").catch(()=>{}));
+let deferredPrompt;window.addEventListener("beforeinstallprompt",e=>{e.preventDefault();deferredPrompt=e;const b=el("install");b.hidden=false;b.onclick=async()=>{deferredPrompt.prompt();deferredPrompt=null;b.hidden=true}});
+</script>
+</body></html>
